@@ -33,7 +33,7 @@ class GitPublisher:  # git add/commit/push 담당
         return bool(out)  # 비어있지 않으면 변경 있음
 
     def add_all(self) -> None:  # 변경 파일 전부 stage
-        self._run(["git", "add", "-A"])  # add all
+        self._run(["git", "add", "blog/_posts", "blog/assets/images"])
 
     def commit(self, message: str) -> None:  # 커밋 수행
         # 커밋할 것이 없으면 커밋 명령이 실패하므로 사전 체크
