@@ -21,6 +21,7 @@ token.json                  # Google OAuth token
 *.crt
 *.p12
 *.pfx
+secrets/
 
 
 ########################################
@@ -63,3 +64,9 @@ Thumbs.db
 
 # pipeline temp images
 blog/assets/images/incoming/
+
+# secrets
+client_secret.json
+token.json
+.env
+
