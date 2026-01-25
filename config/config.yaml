@@ -3,22 +3,19 @@ project:
 
 drive:
   input_folder_id: "1JqokarDeRKxB5RqZDxSlz30TTzaNgKGv"
-  state_folder_id: "1KZypCbm5UVihlTBZwybGKOqrMJk0Sl9J"   # Drive에서 state.json을 둘 폴더 ID
-  state_file_name: "state.json"             # 파일명은 기본 state.json
+  state_folder_id: "1KZypCbm5UVihlTBZwybGKOqrMJk0Sl9J"
+  state_file_name: "state.json"
 
 pipeline:
   batch_size: 4
 
-blog:
-  images_path: "blog/assets/images"
-
 ai:
   provider: "gemini"
   model: "gemini-2.0-flash"
-  mock_mode: true
+  mock_mode: false  # 실제 포스팅을 위해 false로 설정하세요
 
 blog:
-  posts_path: "blog/posts"
+  posts_path: "blog/posts"        # _posts가 아닌 posts로 수정
   images_path: "blog/assets/images"
 
 git:

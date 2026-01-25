@@ -116,7 +116,7 @@ class ContentBuilder:  # 마크다운/이미지 파일 생성 담당
 
         copied_local_paths = self._copy_images(images, slug)  # 이미지 정리(복사)
         # Jekyll에서 접근할 웹 경로로 변환(루트 기준)  # blog/assets/images/<slug>/<file>
-        image_web_paths = [f"./blog/assets/images/{slug}/{Path(p).name}" for p in copied_local_paths]  # 웹 경로 목록
+        image_web_paths = [f"blog/assets/images/{slug}/{Path(p).name}" for p in copied_local_paths]  # 웹 경로 목록
 
         date_prefix = self._today_prefix()  # YYYY-MM-DD
         post_filename = f"{date_prefix}-{slug}.md"  # Jekyll 포스트 파일명 규칙
@@ -128,12 +128,13 @@ class ContentBuilder:  # 마크다운/이미지 파일 생성 담당
         return BuildResult(post_path=str(post_path), post_slug=slug, image_paths=copied_local_paths)  # 결과 반환
 
 
-def create_content_builder(config: Dict[str, Any]) -> ContentBuilder:  # config로 ContentBuilder 생성
-    base_dir = Path(__file__).resolve().parent.parent  # 프로젝트 루트
-    blog_cfg = config.get("blog", {})  # blog 섹션
-    posts_path = blog_cfg.get("posts_path", "blog/posts")  # posts 경로 기본값git
-    images_path = blog_cfg.get("images_path", "blog/assets/images")  # images 경로 기본값
-    return ContentBuilder(posts_dir=base_dir / posts_path, images_dir=base_dir / images_path)  # 객체 생성
+def create_content_builder(config: Dict[str, Any]) -> ContentBuilder:
+    base_dir = Path(__file__).resolve().parent.parent
+    blog_cfg = config.get("blog", {})
+    # posts_path 기본값을 'blog/posts'로 변경
+    posts_path = blog_cfg.get("posts_path", "blog/posts") 
+    images_path = blog_cfg.get("images_path", "blog/assets/images")
+    return ContentBuilder(posts_dir=base_dir / posts_path, images_dir=base_dir / images_path)
 
 
 if __name__ == "__main__":  # 단독 테스트(Drive->더미AI->md생성)
