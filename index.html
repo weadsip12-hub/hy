@@ -1,205 +1,189 @@
-<!doctype html>
-<html lang="ko">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>hy blog</title>
-  <style>
-    :root { --w: 920px; }
-    body { margin: 0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans KR", Arial; background:#0b0f14; color:#e6edf3; }
-    a { color:#79c0ff; text-decoration:none; }
-    a:hover { text-decoration:underline; }
-    header { padding: 32px 16px 12px; border-bottom:1px solid #1f2937; background:#0b0f14; position:sticky; top:0; z-index:10; }
-    .wrap { max-width: var(--w); margin: 0 auto; }
-    .title { display:flex; gap:12px; align-items:baseline; justify-content:space-between; }
-    h1 { margin:0; font-size: 22px; letter-spacing:0.2px; }
-    .sub { margin: 8px 0 0; color:#9aa4b2; font-size: 13px; }
-    main { padding: 18px 16px 40px; }
-    .controls { display:flex; gap:10px; margin: 14px 0 18px; }
-    input { flex:1; padding: 10px 12px; border-radius:12px; border:1px solid #243041; background:#0f1722; color:#e6edf3; }
-    .card { border:1px solid #1f2937; background:#0f1722; border-radius:16px; padding: 14px 14px; margin: 10px 0; }
-    .meta { color:#9aa4b2; font-size: 12px; margin-top: 6px; display:flex; gap:10px; flex-wrap:wrap; }
-    .badge { border:1px solid #2b3a51; color:#c9d1d9; padding:2px 8px; border-radius:999px; font-size: 11px; }
-    .empty { color:#9aa4b2; padding: 18px 0; }
-    footer { border-top:1px solid #1f2937; padding: 16px; color:#9aa4b2; font-size: 12px; }
-    img { max-width: 100%; border-radius: 12px; border: 1px solid #1f2937; }
-    pre { white-space:pre-wrap; }
-    code { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
-  </style>
+<style>
+  :root{
+    --w: 860px;
+    --bg: #0b0f14;
+    --panel: rgba(255,255,255,0.04);
+    --panel2: rgba(255,255,255,0.06);
+    --line: rgba(255,255,255,0.10);
+    --text: #e6edf3;
+    --muted: rgba(230,237,243,0.68);
+    --muted2: rgba(230,237,243,0.52);
+    --link: #79c0ff;
 
-  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-</head>
-<body>
-  <header>
-    <div class="wrap">
-      <div class="title">
-        <h1><a href="./">hy blog</a></h1>
-        <a href="https://github.com/weadsip12-hub/hy" target="_blank" rel="noreferrer">GitHub</a>
-      </div>
-      <p class="sub">posts.json을 읽어서 목록을 만들고, 클릭하면 마크다운을 불러오는 단순 블로그</p>
-
-      <div class="controls">
-        <input id="q" placeholder="검색 (제목/태그)" />
-      </div>
-    </div>
-  </header>
-
-  <main class="wrap">
-    <div id="view"></div>
-  </main>
-
-  <footer>
-    <div class="wrap">© hy • GitHub Pages</div>
-  </footer>
-
-<script>
-  const view = document.getElementById('view');
-  const q = document.getElementById('q');
-
-  // ✅ 프로젝트 페이지 base: "/hy"
-  const BASE = (() => {
-    const parts = location.pathname.split('/').filter(Boolean);
-    return parts.length ? `/${parts[0]}` : '';
-  })();
-
-  function esc(s){
-    return (s||'').replace(/[&<>"']/g, m => (
-      {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]
-    ));
+    --radius: 18px;
+    --radius2: 22px;
+    --shadow: 0 10px 30px rgba(0,0,0,0.35);
   }
 
-  function renderList(posts, keyword=''){
-    const k = keyword.trim().toLowerCase();
-    const filtered = posts.filter(p => {
-      if(!k) return true;
-      const hay = (String(p.title||'') + ' ' + (p.tags||[]).join(' ')).toLowerCase();
-      return hay.includes(k);
-    });
-
-    if(filtered.length === 0){
-      view.innerHTML = `<div class="empty">검색 결과가 없어.</div>`;
-      return;
-    }
-
-    view.innerHTML = filtered.map(p => `
-      <div class="card">
-        <div>
-          <a href="#/post/${encodeURIComponent(p.file)}"><strong>${esc(p.title || p.file)}</strong></a>
-        </div>
-        <div class="meta">
-          <span>${esc(p.date || '')}</span>
-          ${(p.tags||[]).map(t => `<span class="badge">${esc(t)}</span>`).join('')}
-        </div>
-        ${p.desc ? `<div class="meta">${esc(p.desc)}</div>` : ``}
-      </div>
-    `).join('');
+  *{ box-sizing:border-box; }
+  body{
+    margin:0;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans KR", Arial;
+    background: radial-gradient(1200px 700px at 20% -10%, rgba(121,192,255,0.10), transparent 50%),
+                radial-gradient(900px 500px at 100% 0%, rgba(152,255,214,0.07), transparent 55%),
+                var(--bg);
+    color:var(--text);
   }
 
-  async function loadPosts(){
-    // ✅ 상대경로로 가져와야 /hy/에서도 안전
-    const res = await fetch('./posts.json', { cache: 'no-store' });
-    if(!res.ok) throw new Error(`posts.json을 못 불러왔어. status=${res.status}`);
-    const posts = await res.json();
+  a{ color:var(--link); text-decoration:none; }
+  a:hover{ text-decoration:underline; }
 
-    // posts가 혹시 문자열로 섞여있으면 방어
-    const fixed = [];
-    for (const p of posts){
-      if (p && typeof p === 'object') fixed.push(p);
-    }
-
-    fixed.sort((a,b) => String(b.date||'').localeCompare(String(a.date||'')));
-    return fixed;
+  header{
+    position:sticky; top:0; z-index:10;
+    border-bottom:1px solid var(--line);
+    backdrop-filter: blur(10px);
+    background: rgba(11,15,20,0.72);
   }
 
-    function normalizeMarkdown(md){
-    // 0) front matter 제거
-    md = md.replace(/^---[\s\S]*?---\s*/m, '');
+  .wrap{ max-width:var(--w); margin:0 auto; padding: 0 18px; }
 
-    // 1) 깨진 이미지 문법 복구: ![]((path)) -> ![](path)
-    md = md.replace(/!\[([^\]]*)\]\(\(([^)]+)\)\)/g, '![$1]($2)');
+  .title{
+    display:flex; align-items:center; justify-content:space-between;
+    padding: 26px 0 10px;
+  }
+  h1{ margin:0; font-size:24px; letter-spacing:0.2px; }
+  .sub{ margin: 0 0 14px; color:var(--muted); font-size:13px; }
 
-    // 2) 이미지 링크 보정 + URL 인코딩
-    md = md.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (m, alt, path) => {
-        const raw = (path || '').trim();
-
-        // http/https는 그대로 둠
-        if (/^https?:\/\//i.test(raw)) return m;
-
-        let p = raw.replace(/^["']|["']$/g, '');
-        if (p.startsWith('./')) p = p.slice(2);
-
-        let finalPath;
-
-        if (p.startsWith('/blog/')) {
-        finalPath = `${BASE}${p}`;
-        } else if (p.startsWith('blog/')) {
-        finalPath = `${BASE}/${p}`;
-        } else if (p.startsWith('assets/')) {
-        finalPath = `${BASE}/blog/${p}`;
-        } else {
-        finalPath = `${BASE}/${p}`;
-        }
-
-        // ✅ 핵심: 공백/한글/특수문자 URL 인코딩
-        finalPath = encodeURI(finalPath);
-
-        return `![${alt}](${finalPath})`;
-    });
-
-    return md;
-    }
-
-  async function renderPost(file){
-    // ✅ posts.json의 file은 "파일명" 형태(2026-...md)라고 가정
-    const url = `${BASE}/blog/posts/${file}`;
-    const res = await fetch(url, { cache: 'no-store' });
-
-    if(!res.ok){
-      view.innerHTML = `<div class="empty">포스트 파일을 못 불러왔어: ${esc(file)} (status=${res.status})<br/>URL: ${esc(url)}</div>`;
-      return;
-    }
-
-    let md = await res.text();
-    md = normalizeMarkdown(md);
-
-    const html = marked.parse(md);
-
-    view.innerHTML = `
-      <div class="card">
-        <div style="margin-bottom:10px;"><a href="#/">← 목록으로</a></div>
-        <div>${html}</div>
-      </div>
-    `;
-    window.scrollTo(0,0);
+  .controls{ display:flex; gap:10px; padding-bottom: 18px; }
+  input{
+    width:100%;
+    padding: 12px 14px;
+    border-radius: 14px;
+    border:1px solid var(--line);
+    background: rgba(255,255,255,0.03);
+    color: var(--text);
+    outline:none;
+  }
+  input:focus{
+    border-color: rgba(121,192,255,0.55);
+    box-shadow: 0 0 0 3px rgba(121,192,255,0.12);
   }
 
-  function getRoute(){
-    const h = location.hash || '#/';
-    const m = h.match(/^#\/post\/(.+)$/);
-    return m ? { type:'post', file: decodeURIComponent(m[1]) } : { type:'list' };
+  main{ padding: 22px 0 44px; }
+
+  /* 리스트 카드 */
+  .card{
+    border:1px solid var(--line);
+    background: linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0.03));
+    border-radius: var(--radius2);
+    padding: 16px 16px;
+    margin: 14px 0;
+    box-shadow: var(--shadow);
+  }
+  .card:hover{
+    border-color: rgba(121,192,255,0.35);
+    transform: translateY(-1px);
+    transition: 0.12s ease;
   }
 
-  let POSTS = [];
-
-  async function router(){
-    const route = getRoute();
-    if(route.type === 'post'){
-      await renderPost(route.file);
-    } else {
-      renderList(POSTS, q.value);
-    }
+  .meta{
+    color:var(--muted);
+    font-size:12px;
+    margin-top:8px;
+    display:flex; gap:10px; flex-wrap:wrap;
+  }
+  .badge{
+    border:1px solid rgba(121,192,255,0.25);
+    color: rgba(230,237,243,0.85);
+    padding: 2px 9px;
+    border-radius: 999px;
+    font-size: 11px;
+    background: rgba(121,192,255,0.08);
   }
 
-  (async () => {
-    try{
-      POSTS = await loadPosts();
-      q.addEventListener('input', () => renderList(POSTS, q.value));
-      window.addEventListener('hashchange', router);
-      await router();
-    } catch(e){
-      view.innerHTML = `<div class="empty">${esc(e.message)}</div>`;
-    }
-  })();
-</script>
-</body>
-</html>
+  .empty{ color:var(--muted); padding:18px 0; }
+
+  footer{
+    border-top:1px solid var(--line);
+    padding: 18px 0;
+    color:var(--muted2);
+    font-size: 12px;
+  }
+
+  /* ===== 마크다운 본문(포스트) 타이포그래피 ===== */
+  .post{
+    padding: 22px 18px;
+  }
+
+  .post a{ text-decoration: underline; text-underline-offset: 3px; }
+  .post p{ line-height: 1.75; margin: 12px 0; color: rgba(230,237,243,0.90); font-size: 15.5px; }
+  .post h2{
+    margin: 22px 0 10px;
+    font-size: 22px;
+    letter-spacing: -0.2px;
+  }
+  .post h3{
+    margin: 18px 0 10px;
+    font-size: 18px;
+    color: rgba(230,237,243,0.95);
+  }
+  .post ul, .post ol{ padding-left: 20px; margin: 10px 0 16px; }
+  .post li{ margin: 6px 0; line-height: 1.7; color: rgba(230,237,243,0.88); }
+
+  .post hr{
+    border:0;
+    height:1px;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.18), transparent);
+    margin: 22px 0;
+  }
+
+  .post blockquote{
+    margin: 16px 0;
+    padding: 12px 14px;
+    border-left: 4px solid rgba(121,192,255,0.45);
+    background: rgba(121,192,255,0.08);
+    border-radius: 14px;
+    color: rgba(230,237,243,0.88);
+  }
+
+  .post pre{
+    white-space: pre-wrap;
+    background: rgba(0,0,0,0.35);
+    border: 1px solid rgba(255,255,255,0.10);
+    padding: 12px 14px;
+    border-radius: 14px;
+    overflow: hidden;
+  }
+  .post code{
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.10);
+    padding: 1px 6px;
+    border-radius: 8px;
+    font-size: 0.95em;
+  }
+
+  /* ===== 이미지: 네이버 느낌(카드 + 캡션) ===== */
+  .post img{
+    display:block;
+    width:100%;
+    height:auto;
+    border-radius: 16px;
+    border: 1px solid rgba(255,255,255,0.10);
+    box-shadow: 0 14px 34px rgba(0,0,0,0.35);
+    margin: 14px 0 10px;
+    background: rgba(255,255,255,0.02);
+  }
+
+  .imgcap{
+    margin-top: -2px;
+    margin-bottom: 14px;
+    color: var(--muted);
+    font-size: 12.5px;
+    text-align: center;
+  }
+
+  /* 포스트 상단 네비 */
+  .backlink{
+    display:inline-flex;
+    gap:8px;
+    align-items:center;
+    color: rgba(230,237,243,0.78);
+    font-size: 13px;
+    padding: 8px 10px;
+    border-radius: 12px;
+    border: 1px solid rgba(255,255,255,0.10);
+    background: rgba(255,255,255,0.03);
+  }
+  .backlink:hover{ border-color: rgba(121,192,255,0.35); text-decoration:none; }
+</style>
