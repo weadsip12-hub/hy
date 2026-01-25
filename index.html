@@ -9,7 +9,7 @@
     body { margin: 0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans KR", Arial; background:#0b0f14; color:#e6edf3; }
     a { color:#79c0ff; text-decoration:none; }
     a:hover { text-decoration:underline; }
-    header { padding: 32px 16px 12px; border-bottom:1px solid #1f2937; background:#0b0f14; position:sticky; top:0; }
+    header { padding: 32px 16px 12px; border-bottom:1px solid #1f2937; background:#0b0f14; position:sticky; top:0; z-index:10; }
     .wrap { max-width: var(--w); margin: 0 auto; }
     .title { display:flex; gap:12px; align-items:baseline; justify-content:space-between; }
     h1 { margin:0; font-size: 22px; letter-spacing:0.2px; }
@@ -24,6 +24,7 @@
     footer { border-top:1px solid #1f2937; padding: 16px; color:#9aa4b2; font-size: 12px; }
     img { max-width: 100%; border-radius: 12px; border: 1px solid #1f2937; }
     pre { white-space:pre-wrap; }
+    code { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
   </style>
 
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
@@ -35,7 +36,7 @@
         <h1><a href="./">hy blog</a></h1>
         <a href="https://github.com/weadsip12-hub/hy" target="_blank" rel="noreferrer">GitHub</a>
       </div>
-      <p class="sub">posts 폴더의 글을 목록으로 보여주고, 클릭하면 본문을 읽는 단순 블로그</p>
+      <p class="sub">posts.json을 읽어서 목록을 만들고, 클릭하면 마크다운을 불러오는 단순 블로그</p>
 
       <div class="controls">
         <input id="q" placeholder="검색 (제목/태그)" />
@@ -55,22 +56,23 @@
   const view = document.getElementById('view');
   const q = document.getElementById('q');
 
-  // GitHub Pages repo site base path: https://<user>.github.io/<repo>/
-  // location.pathname 예: "/hy/" or "/hy/index.html" -> base "/hy"
+  // ✅ 프로젝트 페이지 base: "/hy"
   const BASE = (() => {
-    const p = location.pathname;
-    if (!p) return '';
-    const parts = p.split('/').filter(Boolean); // ["hy"]
-    return parts.length ? '/' + parts[0] : '';
+    const parts = location.pathname.split('/').filter(Boolean);
+    return parts.length ? `/${parts[0]}` : '';
   })();
 
-  function esc(s){ return (s||'').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+  function esc(s){
+    return (s||'').replace(/[&<>"']/g, m => (
+      {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]
+    ));
+  }
 
   function renderList(posts, keyword=''){
     const k = keyword.trim().toLowerCase();
     const filtered = posts.filter(p => {
       if(!k) return true;
-      const hay = (p.title + ' ' + (p.tags||[]).join(' ')).toLowerCase();
+      const hay = (String(p.title||'') + ' ' + (p.tags||[]).join(' ')).toLowerCase();
       return hay.includes(k);
     });
 
@@ -81,7 +83,9 @@
 
     view.innerHTML = filtered.map(p => `
       <div class="card">
-        <div><a href="#/post/${encodeURIComponent(p.file)}"><strong>${esc(p.title)}</strong></a></div>
+        <div>
+          <a href="#/post/${encodeURIComponent(p.file)}"><strong>${esc(p.title || p.file)}</strong></a>
+        </div>
         <div class="meta">
           <span>${esc(p.date || '')}</span>
           ${(p.tags||[]).map(t => `<span class="badge">${esc(t)}</span>`).join('')}
@@ -92,47 +96,67 @@
   }
 
   async function loadPosts(){
+    // ✅ 상대경로로 가져와야 /hy/에서도 안전
     const res = await fetch('./posts.json', { cache: 'no-store' });
     if(!res.ok) throw new Error(`posts.json을 못 불러왔어. status=${res.status}`);
     const posts = await res.json();
-    posts.sort((a,b) => String(b.date).localeCompare(String(a.date)));
-    return posts;
+
+    // posts가 혹시 문자열로 섞여있으면 방어
+    const fixed = [];
+    for (const p of posts){
+      if (p && typeof p === 'object') fixed.push(p);
+    }
+
+    fixed.sort((a,b) => String(b.date||'').localeCompare(String(a.date||'')));
+    return fixed;
   }
 
-    // 1. BASE 경로를 더 안정적으로 잡습니다.
-    const BASE = location.pathname.startsWith('/hy') ? '/hy' : '';
-
-    // 2. 마크다운 내 이미지 경로 보정 로직 수정
-    function normalizeMarkdown(md) {
-    // Jekyll front matter 제거
+  function normalizeMarkdown(md){
+    // 0) front matter 제거
     md = md.replace(/^---[\s\S]*?---\s*/m, '');
 
-    // 이미지 경로 보정: 마크다운에 적힌 경로가 무엇이든 실제 경로인 blog/assets/... 로 매핑
-    // 예: ![image](assets/images/...) -> ![image](/hy/blog/assets/images/...)
-    md = md.replace(/!\[(.*?)\]\((.*?)\)/g, (match, alt, path) => {
-        if (path.startsWith('http')) return match;
-        
-        // 경로에 'blog'가 포함되어 있지 않다면 붙여줌
-        let cleanPath = path.startsWith('./') ? path.substring(2) : path;
-        if (!cleanPath.startsWith('blog/')) {
-            cleanPath = 'blog/' + (cleanPath.startsWith('/') ? cleanPath.substring(1) : cleanPath);
-        }
-        
-        return `![${alt}](${BASE}/${cleanPath})`;
+    // 1) 너가 만든 깨진 이미지 문법 1차 복구: ![]((path)) -> ![](path)
+    md = md.replace(/!\[([^\]]*)\]\(\(([^)]+)\)\)/g, '![$1]($2)');
+
+    // 2) 이미지 링크 보정
+    // - 상대경로 assets/... 이면 blog/assets/... 로 붙임
+    // - /blog/... 이면 BASE(/hy) 붙임
+    // - blog/... 이면 BASE(/hy) 붙임
+    md = md.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (m, alt, path) => {
+      const raw = (path || '').trim();
+
+      // http/https는 건드리지 않음
+      if (/^https?:\/\//i.test(raw)) return m;
+
+      // 따옴표 제거
+      let p = raw.replace(/^["']|["']$/g, '');
+
+      // ./ 제거
+      if (p.startsWith('./')) p = p.slice(2);
+
+      // 절대경로 /blog/... -> /hy/blog/...
+      if (p.startsWith('/blog/')) return `![${alt}](${BASE}${p})`;
+
+      // 이미 blog/... 라면 -> /hy/blog/...
+      if (p.startsWith('blog/')) return `![${alt}](${BASE}/${p})`;
+
+      // assets/... 라면 실제는 blog/assets/...
+      if (p.startsWith('assets/')) return `![${alt}](${BASE}/blog/${p})`;
+
+      // 그 외: 그냥 BASE 붙여 상대경로로 해봄
+      return `![${alt}](${BASE}/${p})`;
     });
 
     return md;
-    }
+  }
 
-    // 3. 포스트 로드 경로 확인
-    async function renderPost(file) {
-    // file 변수 자체가 '2026-01-25-xxx.md' 형태라면
-    const url = `${BASE}/blog/posts/${file}`; 
-    // ... 생략 ...
-    }
+  async function renderPost(file){
+    // ✅ posts.json의 file은 "파일명" 형태(2026-...md)라고 가정
+    const url = `${BASE}/blog/posts/${file}`;
+    const res = await fetch(url, { cache: 'no-store' });
 
     if(!res.ok){
-      view.innerHTML = `<div class="empty">포스트 파일을 못 불러왔어: ${esc(file)} (status=${res.status})</div>`;
+      view.innerHTML = `<div class="empty">포스트 파일을 못 불러왔어: ${esc(file)} (status=${res.status})<br/>URL: ${esc(url)}</div>`;
       return;
     }
 
@@ -140,6 +164,7 @@
     md = normalizeMarkdown(md);
 
     const html = marked.parse(md);
+
     view.innerHTML = `
       <div class="card">
         <div style="margin-bottom:10px;"><a href="#/">← 목록으로</a></div>
