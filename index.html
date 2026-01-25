@@ -51,6 +51,7 @@
 
 <script>
   const OWNER = 'weadsip12-hub';
+  const BASE = '/' + REPO; // GitHub Pages repo site base: /hy
   const REPO  = 'hy';
   const POSTS_DIR = 'blog/posts';
   const BRANCH = 'main';
@@ -117,7 +118,17 @@
       return;
     }
 
-    const md = await res.text();
+    let md = await res.text();
+
+    // 1) Jekyll front matter 제거 (--- ... ---)
+    md = md.replace(/^---[\s\S]*?---\s*/m, '');
+
+    // 2) 이미지 경로 보정
+    // - /blog/...  -> /hy/blog/...
+    // - ./blog/... -> /hy/blog/...
+    md = md.replace(/\]\(\s*\/blog\//g, `](${BASE}/blog/`);
+    md = md.replace(/\]\(\s*\.\/blog\//g, `](${BASE}/blog/`);
+
     const html = marked.parse(md);
 
     view.innerHTML = `
