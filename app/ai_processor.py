@@ -193,9 +193,14 @@ class AIProcessor:
         prompt = (
             f"{writer_prompt}\n\n"
             f"{final_user_text}\n\n"
-            f"위 JSON의 images 배열 순서대로 사진 섹션을 만들고, "
-            f"각 사진에 대해 이미지 1에는 [[IMAGE_1]] … 형태를 포함해. "
-            f"IMAGE_PATH는 나중에 파이프라인이 넣을 거라서, 여기선 'IMAGE_PATH' 그대로 써."
+            f"[출력 규칙(반드시 준수)]\n"
+            f"- 출력은 마크다운만\n"
+            f"- 각 사진 블록은 반드시 아래 형식으로 시작:\n"
+            f"  ![짧은 사진 설명]([[IMAGE_1]])\n"
+            f"  - line1을 자연스럽게 바꾼 1문장\n"
+            f"  - line2를 자연스럽게 바꾼 1문장\n"
+            f"- 이미지 토큰은 반드시 [[IMAGE_1]] ~ [[IMAGE_4]]만 사용 (다른 경로/IMAGE_PATH 금지)\n"
+            f"- 섹션 제목(사진/본문/요약 등) 금지\n"
         )
 
 
