@@ -83,7 +83,7 @@
   }
 
   async function loadPosts(){
-    const res = await fetch('./blog/posts.json', { cache: 'no-store' });
+    const res = await fetch('./posts.json', { cache: 'no-store' });
     if(!res.ok) throw new Error('posts.json을 못 불러왔어. 파일 경로/이름 확인!');
     const posts = await res.json();
     // 최신 날짜가 위로 오도록 정렬
