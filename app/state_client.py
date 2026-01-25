@@ -107,8 +107,17 @@ def _build_drive_service() -> Any:  # Drive API service 객체를 만든다(서�
         creds = SACredentials.from_service_account_file(sa_path, scopes=SCOPES)  # 서비스계정 creds 생성
         return build("drive", "v3", credentials=creds)  # drive service 생성
 
-    token_path = "token.json"  # OAuth 토큰 파일(로컬)
-    client_secret_path = "client_secret.json"  # OAuth 클라이언트 시크릿 파일(로컬)
+    # ✅ repo 루트 기준으로 경로를 고정 (작업 디렉토리(os.getcwd())에 영향 안 받게)
+    base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))  # .../hyun/app -> .../hyun
+
+    # ✅ token은 루트에 저장(추적 금지), client_secret은 루트 또는 secret 폴더 허용
+    token_path = os.path.join(base_dir, "token.json")
+    client_secret_candidates = [
+        os.path.join(base_dir, "client_secret.json"),
+        os.path.join(base_dir, "secrets", "client_secret.json"),
+    ]
+    client_secret_path = next((p for p in client_secret_candidates if os.path.exists(p)), None)
+
     creds: Optional[Credentials] = None  # creds 초기화
 
     if os.path.exists(token_path):  # token.json이 있으면
@@ -118,9 +127,12 @@ def _build_drive_service() -> Any:  # Drive API service 객체를 만든다(서�
         if creds and creds.expired and creds.refresh_token:  # 만료됐고 refresh_token 있으면
             creds.refresh(Request())  # 토큰 갱신
         else:  # 처음 로그인 필요
-            if not os.path.exists(client_secret_path):  # client_secret.json이 없으면
-                raise FileNotFoundError(  # 무엇이 필요한지 명확히 안내
-                    "Missing OAuth client secret file: client_secret.json (or set GOOGLE_APPLICATION_CREDENTIALS for service account)"
+            if not client_secret_path:  # client_secret.json이 없으면
+                raise FileNotFoundError(
+                    "Missing OAuth client secret file. Checked:\n"
+                    f"- {client_secret_candidates[0]}\n"
+                    f"- {client_secret_candidates[1]}\n"
+                    "Or set GOOGLE_APPLICATION_CREDENTIALS for service account."
                 )
             flow = InstalledAppFlow.from_client_secrets_file(client_secret_path, SCOPES)  # 로컬 로그인 플로우 준비
             creds = flow.run_local_server(port=0)  # 브라우저 열어서 로그인(자동)

@@ -151,3 +151,4 @@ if __name__ == "__main__":  # 단독 테스트(Drive->더미AI->md생성)
     print("POST CREATED:", result.post_path)  # 생성된 포스트 경로
     print("SLUG:", result.post_slug)  # slug 출력
     print("IMAGES:", json.dumps(result.image_paths, ensure_ascii=False, indent=2))  # 이미지 경로 출력
+
