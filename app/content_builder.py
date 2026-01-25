@@ -101,11 +101,15 @@ class ContentBuilder:  # 마크다운/이미지 파일 생성 담당
 
         title = self._extract_title(post_text)  # 제목 추출
         base_slug = self._make_slug(title)  # 제목 기반 slug
+        base_slug = base_slug.strip("-")
+    
+        if not base_slug:
+        base_slug = "post"
 
         # --- slug 유니크 처리: Drive file_id 일부를 suffix로 붙여 중복 방지 ---
         suffix = "post"
         if images and getattr(images[0], "file_id", None):
-            suffix = str(images[0].file_id)[:6]  # 앞 6자리면 충분
+            suffix = str(images[0].file_id)[:6].strip("-")  # 앞 6자리 + '-' 제거
         slug = f"{base_slug}-{suffix}"
 
         copied_local_paths = self._copy_images(images, slug)  # 이미지 정리(복사)
@@ -125,7 +129,7 @@ class ContentBuilder:  # 마크다운/이미지 파일 생성 담당
 def create_content_builder(config: Dict[str, Any]) -> ContentBuilder:  # config로 ContentBuilder 생성
     base_dir = Path(__file__).resolve().parent.parent  # 프로젝트 루트
     blog_cfg = config.get("blog", {})  # blog 섹션
-    posts_path = blog_cfg.get("posts_path", "blog/posts")  # posts 경로 기본값
+    posts_path = blog_cfg.get("posts_path", "blog/posts")  # posts 경로 기본값git
     images_path = blog_cfg.get("images_path", "blog/assets/images")  # images 경로 기본값
     return ContentBuilder(posts_dir=base_dir / posts_path, images_dir=base_dir / images_path)  # 객체 생성
 
