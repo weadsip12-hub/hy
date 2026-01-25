@@ -172,23 +172,32 @@ class AIProcessor:
 
         return self._gemini_generate_captions_json(images)
 
-    def generate_post_markdown(self, captions_json: Dict[str, Any]) -> str:
+    def generate_post_markdown(self, captions: Dict[str, Any], notepad: str = "") -> str:
         if self.mock_mode:
-            return self._mock_post(captions_json)
+            return self._mock_post(captions)
 
         if self.provider.lower() != "gemini":
             raise RuntimeError(f"Real mode supports only provider='gemini' for now (got {self.provider})")
 
         writer_prompt = self._read_prompt("post_writer.txt")
-        input_payload = json.dumps(captions_json, ensure_ascii=False, indent=2)
+        input_payload = json.dumps(captions, ensure_ascii=False, indent=2)
+
+        user_payload = []
+        user_payload.append("[CAPTIONS_JSON]\n" + input_payload)
+
+        if notepad and notepad.strip():
+            user_payload.append("[INPUT_TEXT]\n" + notepad.strip())
+
+        final_user_text = "\n\n".join(user_payload)
 
         prompt = (
             f"{writer_prompt}\n\n"
-            f"[입력: 사진 캡션 JSON]\n{input_payload}\n\n"
+            f"{final_user_text}\n\n"
             f"위 JSON의 images 배열 순서대로 사진 섹션을 만들고, "
             f"각 사진에 대해 이미지 1에는 [[IMAGE_1]] … 형태를 포함해. "
             f"IMAGE_PATH는 나중에 파이프라인이 넣을 거라서, 여기선 'IMAGE_PATH' 그대로 써."
         )
+
 
         return self._gemini_generate_text(prompt, temperature=0.6, max_tokens=1400).strip()
 

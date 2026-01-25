@@ -3,6 +3,8 @@ project:
 
 drive:
   input_folder_id: "1JqokarDeRKxB5RqZDxSlz30TTzaNgKGv"
+  input_text_folder_id: "1kN_7zed7f8NU7j1LayAFNEGlFYdfiIB4"  # 메모 폴더(추가)
+  input_text_file_name: "notepad.txt"  # 메모 파일명(추가)
   state_folder_id: "1KZypCbm5UVihlTBZwybGKOqrMJk0Sl9J"
   state_file_name: "state.json"
 
