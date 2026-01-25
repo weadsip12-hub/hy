@@ -22,6 +22,7 @@
     .badge { border:1px solid #2b3a51; color:#c9d1d9; padding:2px 8px; border-radius:999px; font-size: 11px; }
     .empty { color:#9aa4b2; padding: 18px 0; }
     footer { border-top:1px solid #1f2937; padding: 16px; color:#9aa4b2; font-size: 12px; }
+    img { max-width: 100%; border-radius: 12px; border: 1px solid #1f2937; }
     pre { white-space:pre-wrap; }
   </style>
 
@@ -32,11 +33,12 @@
     <div class="wrap">
       <div class="title">
         <h1><a href="./">hy blog</a></h1>
-        <a href="https://github.com/weadsip12-hub/hy" target="_blank">GitHub</a>
+        <a href="https://github.com/weadsip12-hub/hy" target="_blank" rel="noreferrer">GitHub</a>
       </div>
-      <p class="sub">AI 자동 블로그 (GitHub Pages)</p>
+      <p class="sub">posts 폴더의 글을 목록으로 보여주고, 클릭하면 본문을 읽는 단순 블로그</p>
+
       <div class="controls">
-        <input id="q" placeholder="검색 (제목)" />
+        <input id="q" placeholder="검색 (제목/태그)" />
       </div>
     </div>
   </header>
@@ -50,30 +52,30 @@
   </footer>
 
 <script>
-  const OWNER = 'weadsip12-hub';
-  const BASE = '/' + REPO; // GitHub Pages repo site base: /hy
-  const REPO  = 'hy';
-  const POSTS_DIR = 'blog/posts';
-  const BRANCH = 'main';
-
   const view = document.getElementById('view');
   const q = document.getElementById('q');
 
-  function esc(s){ 
-    return (s||'').replace(/[&<>"']/g, m => ({
-      '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
-    }[m])); 
-  }
+  // GitHub Pages repo site base path: https://<user>.github.io/<repo>/
+  // location.pathname 예: "/hy/" or "/hy/index.html" -> base "/hy"
+  const BASE = (() => {
+    const p = location.pathname;
+    if (!p) return '';
+    const parts = p.split('/').filter(Boolean); // ["hy"]
+    return parts.length ? '/' + parts[0] : '';
+  })();
+
+  function esc(s){ return (s||'').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
 
   function renderList(posts, keyword=''){
     const k = keyword.trim().toLowerCase();
     const filtered = posts.filter(p => {
       if(!k) return true;
-      return p.title.toLowerCase().includes(k);
+      const hay = (p.title + ' ' + (p.tags||[]).join(' ')).toLowerCase();
+      return hay.includes(k);
     });
 
     if(filtered.length === 0){
-      view.innerHTML = `<div class="empty">글이 없어.</div>`;
+      view.innerHTML = `<div class="empty">검색 결과가 없어.</div>`;
       return;
     }
 
@@ -81,56 +83,51 @@
       <div class="card">
         <div><a href="#/post/${encodeURIComponent(p.file)}"><strong>${esc(p.title)}</strong></a></div>
         <div class="meta">
-          <span>${esc(p.date)}</span>
+          <span>${esc(p.date || '')}</span>
+          ${(p.tags||[]).map(t => `<span class="badge">${esc(t)}</span>`).join('')}
         </div>
+        ${p.desc ? `<div class="meta">${esc(p.desc)}</div>` : ``}
       </div>
     `).join('');
   }
 
   async function loadPosts(){
-    const api = `https://api.github.com/repos/${OWNER}/${REPO}/contents/${POSTS_DIR}?ref=${BRANCH}`;
-    const res = await fetch(api, { cache: 'no-store' });
-    if(!res.ok) throw new Error('GitHub에서 posts 목록을 못 불러왔어.');
-
-    const items = await res.json();
-
-    const posts = items
-      .filter(x => x.type === 'file' && x.name.endsWith('.md'))
-      .map(x => {
-        const name = x.name;
-        const date = (name.match(/^(\d{4}-\d{2}-\d{2})-/) || [,''])[1];
-        return {
-          file: name,
-          date: date,
-          title: name.replace(/^\d{4}-\d{2}-\d{2}-/, '').replace(/\.md$/, '')
-        };
-      });
-
+    const res = await fetch('./posts.json', { cache: 'no-store' });
+    if(!res.ok) throw new Error(`posts.json을 못 불러왔어. status=${res.status}`);
+    const posts = await res.json();
     posts.sort((a,b) => String(b.date).localeCompare(String(a.date)));
     return posts;
   }
 
+  function normalizeMarkdown(md){
+    // 1) Jekyll front matter 제거
+    md = md.replace(/^---[\s\S]*?---\s*/m, '');
+
+    // 2) 이미지/링크 경로 보정
+    // 네 md 안에 "/blog/..." 나 "./blog/..." 가 섞여 있어도 repo base(/hy) 붙여서 살려줌
+    md = md.replace(/\]\(\s*\/blog\//g, `](${BASE}/blog/`);
+    md = md.replace(/\]\(\s*\.\/blog\//g, `](${BASE}/blog/`);
+
+    // 혹시 "/assets/..." 형태면 "/hy/blog/assets/..." 로 붙여주기 (옵션)
+    md = md.replace(/\]\(\s*\/assets\//g, `](${BASE}/blog/assets/`);
+
+    return md;
+  }
+
   async function renderPost(file){
-    const raw = `https://raw.githubusercontent.com/${OWNER}/${REPO}/${BRANCH}/${POSTS_DIR}/${file}`;
-    const res = await fetch(raw, { cache: 'no-store' });
+    // md는 repo root 기준으로 blog/posts에 있음
+    const url = `${BASE}/blog/posts/${file}`; // "/hy/blog/posts/xxx.md"
+    const res = await fetch(url, { cache: 'no-store' });
+
     if(!res.ok){
-      view.innerHTML = `<div class="empty">포스트 파일을 못 불러왔어: ${esc(file)}</div>`;
+      view.innerHTML = `<div class="empty">포스트 파일을 못 불러왔어: ${esc(file)} (status=${res.status})</div>`;
       return;
     }
 
     let md = await res.text();
-
-    // 1) Jekyll front matter 제거 (--- ... ---)
-    md = md.replace(/^---[\s\S]*?---\s*/m, '');
-
-    // 2) 이미지 경로 보정
-    // - /blog/...  -> /hy/blog/...
-    // - ./blog/... -> /hy/blog/...
-    md = md.replace(/\]\(\s*\/blog\//g, `](${BASE}/blog/`);
-    md = md.replace(/\]\(\s*\.\/blog\//g, `](${BASE}/blog/`);
+    md = normalizeMarkdown(md);
 
     const html = marked.parse(md);
-
     view.innerHTML = `
       <div class="card">
         <div style="margin-bottom:10px;"><a href="#/">← 목록으로</a></div>
