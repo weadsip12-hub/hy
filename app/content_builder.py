@@ -103,13 +103,15 @@ class ContentBuilder:  # 마크다운/이미지 파일 생성 담당
         base_slug = self._make_slug(title)  # 제목 기반 slug
         base_slug = base_slug.strip("-")
     
+
         if not base_slug:
-        base_slug = "post"
+            base_slug = "post"
 
         # --- slug 유니크 처리: Drive file_id 일부를 suffix로 붙여 중복 방지 ---
         suffix = "post"
         if images and getattr(images[0], "file_id", None):
-            suffix = str(images[0].file_id)[:6].strip("-")  # 앞 6자리 + '-' 제거
+            suffix = str(images[0].file_id)[:6].strip("-")
+
         slug = f"{base_slug}-{suffix}"
 
         copied_local_paths = self._copy_images(images, slug)  # 이미지 정리(복사)
