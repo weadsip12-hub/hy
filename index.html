@@ -111,44 +111,43 @@
     return fixed;
   }
 
-  function normalizeMarkdown(md){
+    function normalizeMarkdown(md){
     // 0) front matter 제거
     md = md.replace(/^---[\s\S]*?---\s*/m, '');
 
-    // 1) 너가 만든 깨진 이미지 문법 1차 복구: ![]((path)) -> ![](path)
+    // 1) 깨진 이미지 문법 복구: ![]((path)) -> ![](path)
     md = md.replace(/!\[([^\]]*)\]\(\(([^)]+)\)\)/g, '![$1]($2)');
 
-    // 2) 이미지 링크 보정
-    // - 상대경로 assets/... 이면 blog/assets/... 로 붙임
-    // - /blog/... 이면 BASE(/hy) 붙임
-    // - blog/... 이면 BASE(/hy) 붙임
+    // 2) 이미지 링크 보정 + URL 인코딩
     md = md.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (m, alt, path) => {
-      const raw = (path || '').trim();
+        const raw = (path || '').trim();
 
-      // http/https는 건드리지 않음
-      if (/^https?:\/\//i.test(raw)) return m;
+        // http/https는 그대로 둠
+        if (/^https?:\/\//i.test(raw)) return m;
 
-      // 따옴표 제거
-      let p = raw.replace(/^["']|["']$/g, '');
+        let p = raw.replace(/^["']|["']$/g, '');
+        if (p.startsWith('./')) p = p.slice(2);
 
-      // ./ 제거
-      if (p.startsWith('./')) p = p.slice(2);
+        let finalPath;
 
-      // 절대경로 /blog/... -> /hy/blog/...
-      if (p.startsWith('/blog/')) return `![${alt}](${BASE}${p})`;
+        if (p.startsWith('/blog/')) {
+        finalPath = `${BASE}${p}`;
+        } else if (p.startsWith('blog/')) {
+        finalPath = `${BASE}/${p}`;
+        } else if (p.startsWith('assets/')) {
+        finalPath = `${BASE}/blog/${p}`;
+        } else {
+        finalPath = `${BASE}/${p}`;
+        }
 
-      // 이미 blog/... 라면 -> /hy/blog/...
-      if (p.startsWith('blog/')) return `![${alt}](${BASE}/${p})`;
+        // ✅ 핵심: 공백/한글/특수문자 URL 인코딩
+        finalPath = encodeURI(finalPath);
 
-      // assets/... 라면 실제는 blog/assets/...
-      if (p.startsWith('assets/')) return `![${alt}](${BASE}/blog/${p})`;
-
-      // 그 외: 그냥 BASE 붙여 상대경로로 해봄
-      return `![${alt}](${BASE}/${p})`;
+        return `![${alt}](${finalPath})`;
     });
 
     return md;
-  }
+    }
 
   async function renderPost(file){
     // ✅ posts.json의 file은 "파일명" 형태(2026-...md)라고 가정
