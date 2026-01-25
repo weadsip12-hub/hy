@@ -12,7 +12,7 @@ pipeline:
 ai:
   provider: "gemini"
   model: "gemini-2.0-flash"
-  mock_mode: false  # 실제 포스팅을 위해 false로 설정하세요
+  mock_mode: true  # 실제 포스팅을 위해 false로 설정하세요
 
 blog:
   posts_path: "blog/posts"        # _posts가 아닌 posts로 수정
