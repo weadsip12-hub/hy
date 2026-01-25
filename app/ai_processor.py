@@ -186,7 +186,7 @@ class AIProcessor:
             f"{writer_prompt}\n\n"
             f"[입력: 사진 캡션 JSON]\n{input_payload}\n\n"
             f"위 JSON의 images 배열 순서대로 사진 섹션을 만들고, "
-            f"각 사진에 대해 ![사진 설명](IMAGE_PATH) 형태를 포함해. "
+            f"각 사진에 대해 이미지 1에는 [[IMAGE_1]] … 형태를 포함해. "
             f"IMAGE_PATH는 나중에 파이프라인이 넣을 거라서, 여기선 'IMAGE_PATH' 그대로 써."
         )
 
