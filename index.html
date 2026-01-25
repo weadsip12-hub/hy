@@ -99,25 +99,37 @@
     return posts;
   }
 
-  function normalizeMarkdown(md){
-    // 1) Jekyll front matter 제거
+    // 1. BASE 경로를 더 안정적으로 잡습니다.
+    const BASE = location.pathname.startsWith('/hy') ? '/hy' : '';
+
+    // 2. 마크다운 내 이미지 경로 보정 로직 수정
+    function normalizeMarkdown(md) {
+    // Jekyll front matter 제거
     md = md.replace(/^---[\s\S]*?---\s*/m, '');
 
-    // 2) 이미지/링크 경로 보정
-    // 네 md 안에 "/blog/..." 나 "./blog/..." 가 섞여 있어도 repo base(/hy) 붙여서 살려줌
-    md = md.replace(/\]\(\s*\/blog\//g, `](${BASE}/blog/`);
-    md = md.replace(/\]\(\s*\.\/blog\//g, `](${BASE}/blog/`);
-
-    // 혹시 "/assets/..." 형태면 "/hy/blog/assets/..." 로 붙여주기 (옵션)
-    md = md.replace(/\]\(\s*\/assets\//g, `](${BASE}/blog/assets/`);
+    // 이미지 경로 보정: 마크다운에 적힌 경로가 무엇이든 실제 경로인 blog/assets/... 로 매핑
+    // 예: ![image](assets/images/...) -> ![image](/hy/blog/assets/images/...)
+    md = md.replace(/!\[(.*?)\]\((.*?)\)/g, (match, alt, path) => {
+        if (path.startsWith('http')) return match;
+        
+        // 경로에 'blog'가 포함되어 있지 않다면 붙여줌
+        let cleanPath = path.startsWith('./') ? path.substring(2) : path;
+        if (!cleanPath.startsWith('blog/')) {
+            cleanPath = 'blog/' + (cleanPath.startsWith('/') ? cleanPath.substring(1) : cleanPath);
+        }
+        
+        return `![${alt}](${BASE}/${cleanPath})`;
+    });
 
     return md;
-  }
+    }
 
-  async function renderPost(file){
-    // md는 repo root 기준으로 blog/posts에 있음
-    const url = `${BASE}/blog/posts/${file}`; // "/hy/blog/posts/xxx.md"
-    const res = await fetch(url, { cache: 'no-store' });
+    // 3. 포스트 로드 경로 확인
+    async function renderPost(file) {
+    // file 변수 자체가 '2026-01-25-xxx.md' 형태라면
+    const url = `${BASE}/blog/posts/${file}`; 
+    // ... 생략 ...
+    }
 
     if(!res.ok){
       view.innerHTML = `<div class="empty">포스트 파일을 못 불러왔어: ${esc(file)} (status=${res.status})</div>`;
