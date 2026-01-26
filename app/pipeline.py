@@ -74,11 +74,12 @@ class Pipeline:
         self._log("INFO", "Generating captions (1 call for up to 4 images)...")
         captions = self.ai.generate_photo_captions(downloaded)
 
-        self._log("INFO", "Loading notepad from Google Drive...")
-        notepad = self.drive_manager.load_notepad_text()  # ✅ 추가
-        self._log("INFO", f"Notepad loaded: {len(notepad)} chars")
+        self._log("INFO", "Loading prompt from Google Drive (latest Google Docs)...")
+        prompt = self.drive_manager.load_prompt_text()
+        self._log("INFO", f"Prompt loaded: {len(prompt)} chars")
         self._log("INFO", "Generating post text (1 call)...")
-        post_text = self.ai.generate_post_markdown(captions, notepad)  # ✅ 수정(인자 추가)
+        post_text = self.ai.generate_post_markdown(captions, prompt)
+
 
         return captions, post_text
 

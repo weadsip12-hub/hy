@@ -13,24 +13,14 @@ IMAGE_MIME_PREFIX = "image/"
 
 
 @dataclass
-class DriveImage:
-    file_id: str
-    name: str
-    mime_type: str
-    modified_time: str
-    local_path: Optional[str] = None
-
-
-@dataclass
 class DriveManager:
     drive_service: Any
     input_folder_id: str
     images_root: Path
     batch_size: int = 4
 
-    # ✅ Input_text (Google Drive 메모) 설정
+    # ✅ Input_text (Google Drive 프롬프트 폴더)
     input_text_folder_id: Optional[str] = None
-    input_text_file_name: str = "notepad.txt"
 
     def _list_images_in_folder(self) -> List[DriveImage]:
         q = (
@@ -100,19 +90,19 @@ class DriveManager:
 
         return downloaded
 
-    # ✅ Google Drive Input_text 폴더에서 notepad.txt 읽기
-    def load_notepad_text(self) -> str:
+    # ✅ Input_text 폴더에서 "최신 수정된 Google Docs 1개"를 프롬프트로 읽기
+    def load_prompt_text(self) -> str:
         if not self.input_text_folder_id:
             return ""
 
         q = (
             f"'{self.input_text_folder_id}' in parents and "
-            f"name = '{self.input_text_file_name}' and "
+            "mimeType = 'application/vnd.google-apps.document' and "
             "trashed = false"
         )
         resp = self.drive_service.files().list(
             q=q,
-            fields="files(id,name,mimeType,modifiedTime)",
+            fields="files(id,name,modifiedTime)",
             orderBy="modifiedTime desc",
             pageSize=1,
         ).execute()
@@ -120,17 +110,11 @@ class DriveManager:
         files = resp.get("files", [])
         if not files:
             return ""
+        doc_name = files[0]["name"]
+        print(f"[PROMPT] Using Google Docs: {doc_name}")
 
-        meta = files[0]
-        file_id = meta["id"]
-        mime = meta.get("mimeType", "")
+        file_id = files[0]["id"]
 
-        # 1) 일반 파일(txt 등)
-        if mime != "application/vnd.google-apps.document":
-            data = self._download_bytes(file_id)
-            return data.decode("utf-8", errors="replace").strip()
-
-        # 2) Google Docs 문서면 export 필요
         request = self.drive_service.files().export_media(
             fileId=file_id,
             mimeType="text/plain",
@@ -140,7 +124,12 @@ class DriveManager:
         done = False
         while not done:
             _, done = downloader.next_chunk()
+
         return fh.getvalue().decode("utf-8", errors="replace").strip()
+
+    # ✅ 기존 함수명 호환 (pipeline이 아직 load_notepad_text() 쓰고 있어도 OK)
+    def load_notepad_text(self) -> str:
+        return self.load_prompt_text()
 
 
 def create_drive_manager(config: Dict[str, Any], drive_service: Any) -> DriveManager:
@@ -157,7 +146,6 @@ def create_drive_manager(config: Dict[str, Any], drive_service: Any) -> DriveMan
 
     # ✅ Input_text 설정(없어도 동작)
     input_text_folder_id = drive_cfg.get("input_text_folder_id")
-    input_text_file_name = drive_cfg.get("input_text_file_name", "notepad.txt")
 
     base_dir = Path(__file__).resolve().parent.parent
     images_root = base_dir / images_path
@@ -168,7 +156,6 @@ def create_drive_manager(config: Dict[str, Any], drive_service: Any) -> DriveMan
         images_root=images_root,
         batch_size=batch_size,
         input_text_folder_id=input_text_folder_id,
-        input_text_file_name=input_text_file_name,
     )
 
 
