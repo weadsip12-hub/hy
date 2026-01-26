@@ -6,11 +6,18 @@ from typing import Any, Dict, List, Optional
 
 from googleapiclient.http import MediaIoBaseDownload
 from io import BytesIO
-
+from typing import Optional
 from app.state_client import StateClient
 
 IMAGE_MIME_PREFIX = "image/"
 
+@dataclass
+class DriveImage:
+    file_id: str
+    name: str
+    mime_type: str
+    modified_time: str
+    local_path: Optional[str] = None
 
 @dataclass
 class DriveManager:
