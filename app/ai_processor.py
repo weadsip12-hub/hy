@@ -173,38 +173,34 @@ class AIProcessor:
         return self._gemini_generate_captions_json(images)
 
     def generate_post_markdown(self, captions: Dict[str, Any], notepad: str = "") -> str:
+        # 1. 테스트 모드 대응
         if self.mock_mode:
             return self._mock_post(captions)
 
+        # 2. 프로바이더 체크
         if self.provider.lower() != "gemini":
             raise RuntimeError(f"Real mode supports only provider='gemini' for now (got {self.provider})")
 
+        # 3. 프롬프트 파일 읽기 (수정하기 쉽게 외부로 빼둔 파일)
         writer_prompt = self._read_prompt("post_writer.txt")
-        input_payload = json.dumps(captions, ensure_ascii=False, indent=2)
+        
+        # 4. 입력 데이터 구조화 (JSON으로 묶어서 보내야 토큰이 절약되고 AI가 잘 알아듣습니다)
+        user_payload = {
+            "captions": captions,
+            "additional_info": notepad.strip() if notepad else ""
+        }
+        input_data_str = json.dumps(user_payload, ensure_ascii=False, indent=2)
 
-        user_payload = []
-        user_payload.append("[CAPTIONS_JSON]\n" + input_payload)
-
-        if notepad and notepad.strip():
-            user_payload.append("[INPUT_TEXT]\n" + notepad.strip())
-
-        final_user_text = "\n\n".join(user_payload)
-
-        prompt = (
+        # 5. 최종 프롬프트 구성 (아주 깔끔해졌죠?)
+        # 지시사항(파일 내용) + 실제 데이터(JSON)
+        final_prompt = (
             f"{writer_prompt}\n\n"
-            f"{final_user_text}\n\n"
-            f"[출력 규칙(반드시 준수)]\n"
-            f"- 출력은 마크다운만\n"
-            f"- 각 사진 블록은 반드시 아래 형식으로 시작:\n"
-            f"  ![짧은 사진 설명]([[IMAGE_1]])\n"
-            f"  - line1을 자연스럽게 바꾼 1문장\n"
-            f"  - line2를 자연스럽게 바꾼 1문장\n"
-            f"- 이미지 토큰은 반드시 [[IMAGE_1]] ~ [[IMAGE_4]]만 사용 (다른 경로/IMAGE_PATH 금지)\n"
-            f"- 섹션 제목(사진/본문/요약 등) 금지\n"
+            f"### INPUT DATA (JSON):\n{input_data_str}\n\n"
+            f"---"
         )
 
-
-        return self._gemini_generate_text(prompt, temperature=0.6, max_tokens=1400).strip()
+        # 6. 실행 및 결과 반환
+        return self._gemini_generate_text(final_prompt, temperature=0.6, max_tokens=1400).strip()
 
 
 def create_ai_processor(config: Dict[str, Any]) -> AIProcessor:
