@@ -76,8 +76,8 @@ class AIProcessor:
         payload = {
             "contents": [{"role": "user", "parts": [{"text": prompt}]}],
             "generationConfig": {
-                "temperature": temperature,
-                "maxOutputTokens": max_tokens,
+                "temperature": 0.3,
+                "maxOutputTokens": 600,
             },
         }
 
@@ -212,6 +212,8 @@ class AIProcessor:
         return self._gemini_generate_captions_json(images)
 
     def generate_post_markdown(self, captions: Dict[str, Any], notepad: str = "") -> str:
+        import time
+        time.sleep(2) 
         # 1. 테스트 모드 대응
         if self.mock_mode:
             return self._mock_post(captions)
@@ -239,7 +241,7 @@ class AIProcessor:
         )
 
         # 6. 실행 및 결과 반환
-        return self._gemini_generate_text(final_prompt, temperature=0.6, max_tokens=1400).strip()
+        return self._gemini_generate_text(final_prompt, temperature=0.6, max_tokens=500).strip()
 
     def rewrite_trendy_blog(self, draft_post: str, style_note: str = "") -> str:
         """
@@ -274,8 +276,8 @@ class AIProcessor:
 def create_ai_processor(config: Dict[str, Any]) -> AIProcessor:
     ai_cfg = config.get("ai", {})
     provider = ai_cfg.get("provider", "gemini")
-    vision_model = ai_cfg.get("vision_model", "gemini-2.0-flash")
-    text_model = ai_cfg.get("text_model", "gemini-2.5-pro")
+    vision_model = ai_cfg.get("vision_model", "gemini-1.5-pro-vision")
+    text_model = ai_cfg.get("text_model", "gemini-2.0-flash")
     mock_mode = bool(ai_cfg.get("mock_mode", False))
 
     base_dir = Path(__file__).resolve().parent.parent

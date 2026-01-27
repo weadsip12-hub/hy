@@ -12,7 +12,8 @@ pipeline:
 
 ai:
   provider: "gemini"
-  model: "gemini-2.0-flash"
+  vision_model: "gemini-2.0-flash"
+  text_model: "gemini-2.0-flash"
   mock_mode: false  # 실제 포스팅을 위해 false로 설정하세요
 
 blog:

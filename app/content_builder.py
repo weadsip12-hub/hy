@@ -48,12 +48,16 @@ class ContentBuilder:
         out_paths: List[str] = []
         for img in images:
             src = Path(img.local_path)
+
+            # ✅ 파일명 안전화: 공백/한글/특수문자 -> _
             safe_name = re.sub(r"[^0-9A-Za-z._-]+", "_", src.name)
+
             dst = target_dir / safe_name
             shutil.copy2(src, dst)
             out_paths.append(str(dst))
 
         return out_paths
+
 
     def _strip_front_matter(self, text: str) -> str:
         return re.sub(r"^---[\s\S]*?---\s*", "", text, flags=re.MULTILINE).lstrip()
@@ -71,12 +75,32 @@ class ContentBuilder:
         # 이미지 붙는 현상 방지 (강제 줄바꿈)
         result = re.sub(r"\)\s*!\[", ")\n\n![", result)
         return result
+    def _render_image_block(self, image_web_paths: List[str], captions_json: Dict[str, Any]) -> str:
+        items = captions_json.get("images", []) if isinstance(captions_json, dict) else []
 
-    def _make_markdown(self, title: str, post_text: str, image_web_paths: List[str]) -> str:
+        lines: List[str] = []
+        for i, url in enumerate(image_web_paths, start=1):
+            alt = f"사진 {i}"
+            if i - 1 < len(items) and isinstance(items[i - 1], dict):
+                alt_candidate = (items[i - 1].get("line1") or "").strip()
+                if alt_candidate:
+                    alt = alt_candidate
+
+            # index.html에서 alt를 캡션처럼 뿌려주니까 alt에 캡션 넣으면 됨
+            lines.append(f"![{alt}]({url})")
+            lines.append("")
+
+        return "\n".join(lines).strip()
+
+    def _make_markdown(self, title: str, post_text: str, image_web_paths: List[str], captions_json: Dict[str, Any]) -> str:
         body = self._strip_front_matter(post_text or "")
         body = self._inject_images(body, image_web_paths)
 
-        # front matter 최소만 붙임
+        # ✅ 토큰이 없어도 이미지 블록을 무조건 맨 위에 붙임
+        img_block = self._render_image_block(image_web_paths, captions_json)
+        if img_block:
+            body = img_block + "\n\n---\n\n" + body.strip()
+
         md = []
         md.append("---")
         md.append(f'title: "{title}"')
@@ -86,8 +110,8 @@ class ContentBuilder:
         md.append("")
         md.append(body.strip())
         md.append("")
-
         return "\n".join(md)
+
 
     def build(self, captions_json: Dict[str, Any], post_text: str, images: List[DriveImage]) -> BuildResult:
         self._ensure_dirs()
@@ -110,7 +134,8 @@ class ContentBuilder:
         post_filename = f"{date_prefix}-{slug}.md"
         post_path = self.posts_dir / post_filename
 
-        md = self._make_markdown(title, post_text, image_web_paths)
+        md = self._make_markdown(title, post_text, image_web_paths, captions_json)
+
         post_path.write_text(md, encoding="utf-8")
 
         return BuildResult(
