@@ -13,6 +13,7 @@ from app.drive_manager import create_drive_manager, DriveImage
 from app.ai_processor import create_ai_processor
 from app.content_builder import create_content_builder, BuildResult
 from app.git_publisher import create_git_publisher
+import time
 
 @dataclass
 class PipelineResult:
@@ -74,14 +75,56 @@ class Pipeline:
         self._log("INFO", "Generating captions (1 call for up to 4 images)...")
         captions = self.ai.generate_photo_captions(downloaded)
 
+        time.sleep(5)  # ✅ API 호출 사이 딜레이
+
         self._log("INFO", "Loading prompt from Google Drive (latest Google Docs)...")
         prompt = self.drive_manager.load_prompt_text()
         self._log("INFO", f"Prompt loaded: {len(prompt)} chars")
+
         self._log("INFO", "Generating post text (1 call)...")
         post_text = self.ai.generate_post_markdown(captions, prompt)
 
+        time.sleep(5)  # ✅ 추가 딜레이
 
         return captions, post_text
+
+    
+    def _transform_trendy(self, post_text: str, captions: Dict[str, Any]) -> str:
+        """
+        AI가 만든 글을 '트렌디 블로그 스타일'로 변환하는 단계
+        """
+
+        lines = [ln.strip() for ln in post_text.splitlines() if ln.strip()]
+
+        # AI 보고서 스타일 제목 제거
+        drop_keywords = ["목차", "총평", "Verdict", "Special Tips", "이용 꿀팁", "해시태그", "Auto Tags"]
+        filtered = []
+        for ln in lines:
+            if any(k in ln for k in drop_keywords):
+                continue
+            if ln[:2].isdigit() and ". " in ln[:4]:  # "5. ..." 같은 번호 제거
+                continue
+            filtered.append(ln)
+
+        # 트렌디 훅 + 감성 구조
+        hook = [
+            "🧡 아이랑 파주에서 진짜 괜찮았던 곳 발견",
+            "",
+            "솔직히 말하면,",
+            "“파주에 이런 데가 있었나?” 싶었음.",
+            "",
+        ]
+
+        bullets = [
+            "✔ 직접 구운 빵/디저트 퀄리티",
+            "✔ 아이가 좋아할 분위기",
+            "✔ 주차 스트레스 거의 없음",
+            "",
+            "---",
+            "",
+        ]
+
+        return "\n".join(hook + bullets + filtered)
 
     def _build_content(self, captions: Dict[str, Any], post_text: str, downloaded: List[DriveImage]) -> BuildResult:
         self._log("INFO", "Building blog content (markdown + images)...")
@@ -152,6 +195,8 @@ class Pipeline:
                 return PipelineResult(ok=True, message="No new images.", processed_count=0)
 
             captions, post_text = self._ai_generate(downloaded)
+            time.sleep(5)
+            post_text = self.ai.rewrite_trendy_blog(post_text)
             build_result = self._build_content(captions, post_text, downloaded)
             
             # 메타데이터 업데이트 (제목 추출 로직 포함)

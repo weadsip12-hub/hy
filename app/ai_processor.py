@@ -202,26 +202,55 @@ class AIProcessor:
         # 6. 실행 및 결과 반환
         return self._gemini_generate_text(final_prompt, temperature=0.6, max_tokens=1400).strip()
 
+    def rewrite_trendy_blog(self, draft_post: str, style_note: str = "") -> str:
+        """
+        2차 호출: 초안(draft_post)을 '트렌디 블로그' 톤으로 리라이팅한다.
+        - 보고서/목차/번호 섹션 제거
+        - 짧은 문장 + 줄바꿈
+        - 이모지 훅 + 체크포인트 + 구분선
+        - 과한 영어/형식적 소제목 금지
+        """
+        if self.mock_mode:
+            # 더미 모드에서는 그냥 초안 그대로 반환
+            return draft_post
+
+        if self.provider.lower() != "gemini":
+            raise RuntimeError(f"Real mode supports only provider='gemini' for now (got {self.provider})")
+
+        rewrite_prompt = self._read_prompt("post_rewriter_trendy.txt")
+
+        payload = {
+            "draft_post": draft_post,
+            "style_note": style_note.strip() if style_note else ""
+        }
+
+        final_prompt = (
+            f"{rewrite_prompt}\n\n"
+            f"### INPUT (JSON):\n{json.dumps(payload, ensure_ascii=False, indent=2)}\n\n"
+            f"---"
+        )
+
+        return self._gemini_generate_text(final_prompt, temperature=0.7, max_tokens=1500).strip()
 
 def create_ai_processor(config: Dict[str, Any]) -> AIProcessor:
-    ai_cfg = config.get("ai", {})
-    provider = ai_cfg.get("provider", "gemini")
-    model = ai_cfg.get("model", "gemini-2.0-flash")
-    mock_mode = bool(ai_cfg.get("mock_mode", False))
+        ai_cfg = config.get("ai", {})
+        provider = ai_cfg.get("provider", "gemini")
+        model = ai_cfg.get("model", "gemini-2.0-flash")
+        mock_mode = bool(ai_cfg.get("mock_mode", False))
 
-    base_dir = Path(__file__).resolve().parent.parent
-    prompts_dir = base_dir / "prompts"
+        base_dir = Path(__file__).resolve().parent.parent
+        prompts_dir = base_dir / "prompts"
 
-    api_key = None
-    if not mock_mode:
-        api_key = os.getenv("GEMINI_API_KEY") or os.getenv("AI_API_KEY")
-        if not api_key:
-            raise ValueError("Missing API key: set GEMINI_API_KEY (or set ai.mock_mode=true)")
+        api_key = None
+        if not mock_mode:
+            api_key = os.getenv("GEMINI_API_KEY") or os.getenv("AI_API_KEY")
+            if not api_key:
+                raise ValueError("Missing API key: set GEMINI_API_KEY (or set ai.mock_mode=true)")
 
-    return AIProcessor(
-        provider=provider,
-        model=model,
-        api_key=api_key,
-        prompts_dir=prompts_dir,
-        mock_mode=mock_mode,
-    )
+        return AIProcessor(
+            provider=provider,
+            model=model,
+            api_key=api_key,
+            prompts_dir=prompts_dir,
+            mock_mode=mock_mode,
+        )

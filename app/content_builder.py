@@ -20,6 +20,7 @@ class BuildResult:
 class ContentBuilder:
     posts_dir: Path
     images_dir: Path
+    baseurl: str = ""
 
     def _make_slug(self, title: str) -> str:
         title = title.strip()
@@ -100,7 +101,9 @@ class ContentBuilder:
         slug = f"{base_slug}-{suffix}"
 
         copied_local_paths = self._copy_images(images, slug)
-        image_web_paths = [f"blog/assets/images/{slug}/{Path(p).name}" for p in copied_local_paths]
+        base = (self.baseurl or "").rstrip("/")
+        image_web_paths = [f"{base}/assets/images/{slug}/{Path(p).name}" for p in copied_local_paths]
+
 
         date_prefix = self._today_prefix()
         post_filename = f"{date_prefix}-{slug}.md"
@@ -121,4 +124,10 @@ def create_content_builder(config: Dict[str, Any]) -> ContentBuilder:
     blog_cfg = config.get("blog", {})
     posts_path = blog_cfg.get("posts_path", "blog/posts")
     images_path = blog_cfg.get("images_path", "blog/assets/images")
-    return ContentBuilder(posts_dir=base_dir / posts_path, images_dir=base_dir / images_path)
+    baseurl = blog_cfg.get("baseurl", "") 
+    
+    return ContentBuilder(
+        posts_dir=base_dir / posts_path,
+        images_dir=base_dir / images_path,
+        baseurl=baseurl,  # ✅ 추가
+    )

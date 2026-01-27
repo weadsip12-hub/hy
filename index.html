@@ -120,20 +120,33 @@
     md = md.replace(/!\[([^\]]*)\]\(\(([^)]+)\)\)/g, '![$1]($2)');
 
     md = md.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (m, alt, path) => {
-      const raw = (path || '').trim();
-      if (/^https?:\/\//i.test(raw)) return m;
+      let p = (path || '').trim();
+      if (!p) return m;
 
-      let p = raw.replace(/^["']|["']$/g, '');
+      p = p.replace(/^["']|["']$/g, '');
+      if (/^https?:\/\//i.test(p)) return `![${alt}](${p})`;
       if (p.startsWith('./')) p = p.slice(2);
 
-      let finalUrl;
-      if (p.startsWith('/blog/')) finalUrl = `${BASE}${p}`;
-      else if (p.startsWith('blog/')) finalUrl = `${BASE}/${p}`;
-      else if (p.startsWith('assets/')) finalUrl = `${BASE}/blog/${p}`;
-      else finalUrl = `${BASE}/${p}`;
+      // ✅ 핵심: "blog/..."로 시작하면 BASE를 붙여서 절대경로화
+      //    즉, "blog/assets/..." -> "/hy/blog/assets/..."
+      if (p.startsWith('blog/')) {
+        return `![${alt}](${encodeURI(`${BASE}/${p}`)})`;
+      }
+      if (p.startsWith('/blog/')) {
+        return `![${alt}](${encodeURI(`${BASE}${p}`)})`;
+      }
 
-      finalUrl = encodeURI(finalUrl);
-      return `![${alt}](${finalUrl})`;
+      // 혹시 "assets/..."만 들어오면 blog/assets로 보정(과거 호환)
+      if (p.startsWith('assets/')) {
+        return `![${alt}](${encodeURI(`${BASE}/blog/${p}`)})`;
+      }
+      if (p.startsWith('/assets/')) {
+        return `![${alt}](${encodeURI(`${BASE}/blog${p}`)})`;
+      }
+
+      // 그 외는 BASE 기준으로 그냥 붙임
+      const finalUrl = p.startsWith('/') ? `${BASE}${p}` : `${BASE}/${p}`;
+      return `![${alt}](${encodeURI(finalUrl)})`;
     });
 
     return md;
