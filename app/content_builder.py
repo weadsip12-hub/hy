@@ -48,7 +48,8 @@ class ContentBuilder:
         out_paths: List[str] = []
         for img in images:
             src = Path(img.local_path)
-            dst = target_dir / src.name
+            safe_name = re.sub(r"[^0-9A-Za-z._-]+", "_", src.name)
+            dst = target_dir / safe_name
             shutil.copy2(src, dst)
             out_paths.append(str(dst))
 
@@ -102,7 +103,7 @@ class ContentBuilder:
 
         copied_local_paths = self._copy_images(images, slug)
         base = (self.baseurl or "").rstrip("/")
-        image_web_paths = [f"{base}/assets/images/{slug}/{Path(p).name}" for p in copied_local_paths]
+        image_web_paths = [f"/blog/assets/images/{slug}/{Path(p).name}" for p in copied_local_paths]
 
 
         date_prefix = self._today_prefix()

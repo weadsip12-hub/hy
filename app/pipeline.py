@@ -75,7 +75,7 @@ class Pipeline:
         self._log("INFO", "Generating captions (1 call for up to 4 images)...")
         captions = self.ai.generate_photo_captions(downloaded)
 
-        time.sleep(5)  # ✅ API 호출 사이 딜레이
+        #time.sleep(5)  # ✅ API 호출 사이 딜레이
 
         self._log("INFO", "Loading prompt from Google Drive (latest Google Docs)...")
         prompt = self.drive_manager.load_prompt_text()
@@ -84,7 +84,7 @@ class Pipeline:
         self._log("INFO", "Generating post text (1 call)...")
         post_text = self.ai.generate_post_markdown(captions, prompt)
 
-        time.sleep(5)  # ✅ 추가 딜레이
+        #time.sleep(5)  # ✅ 추가 딜레이
 
         return captions, post_text
 
@@ -195,7 +195,7 @@ class Pipeline:
                 return PipelineResult(ok=True, message="No new images.", processed_count=0)
 
             captions, post_text = self._ai_generate(downloaded)
-            time.sleep(5)
+            #time.sleep(5)
             post_text = self.ai.rewrite_trendy_blog(post_text)
             build_result = self._build_content(captions, post_text, downloaded)
             

@@ -12,8 +12,9 @@ from app.drive_manager import DriveImage
 
 @dataclass
 class AIProcessor:
-    provider: str
-    model: str
+    provider: str    
+    vision_model: str   # ✅ 이미지/캡션
+    text_model: str     # ✅ 글/리라이팅
     api_key: str | None
     prompts_dir: Path
     mock_mode: bool = False
@@ -70,7 +71,7 @@ class AIProcessor:
         if not self.api_key:
             raise ValueError("Missing API key: set GEMINI_API_KEY (or set ai.mock_mode=true)")
 
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/{self.model}:generateContent"
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{self.text_model}:generateContent"
         params = {"key": self.api_key}
         payload = {
             "contents": [{"role": "user", "parts": [{"text": prompt}]}],
@@ -80,15 +81,53 @@ class AIProcessor:
             },
         }
 
-        r = requests.post(url, params=params, json=payload, timeout=90)
-        if r.status_code != 200:
-            raise RuntimeError(f"Gemini API error: {r.status_code} {r.text}")
+        import time, random
 
-        data = r.json()
-        try:
-            return data["candidates"][0]["content"]["parts"][0]["text"]
-        except Exception:
+        # ✅ 429 / 이상응답(MAX_TOKENS + parts없음) 자동 재시도
+        for attempt in range(4):  # 최대 4번
+            r = requests.post(url, params=params, json=payload, timeout=90)
+
+            # HTTP 에러 처리
+            if r.status_code == 429:
+                wait = (1.2 * (2 ** attempt)) + random.uniform(0.0, 0.8)
+                print(f"[WARN] Gemini 429. retry in {wait:.1f}s...")
+                time.sleep(wait)
+                continue
+
+            if r.status_code != 200:
+                raise RuntimeError(f"Gemini API error: {r.status_code} {r.text}")
+
+            data = r.json()
+
+            # ✅ 텍스트 안전 추출
+            cands = data.get("candidates") or []
+            cand0 = cands[0] if cands else {}
+            content = (cand0.get("content") or {})
+            parts = content.get("parts") or []
+
+            texts = []
+            for p in parts:
+                if isinstance(p, dict) and p.get("text"):
+                    texts.append(p["text"])
+
+            if texts:
+                return "\n".join(texts).strip()
+
+            # ✅ 여기로 오면: parts가 없거나 text가 없음
+            # 로그에 네가 본 케이스: finishReason=MAX_TOKENS, content.parts 없음
+            finish = cand0.get("finishReason")
+
+            # MAX_TOKENS면서 텍스트가 비어있으면 -> 잠깐 쉬고 재시도
+            if finish == "MAX_TOKENS":
+                wait = (1.0 * (2 ** attempt)) + random.uniform(0.0, 0.6)
+                print(f"[WARN] finishReason=MAX_TOKENS but no text parts. retry in {wait:.1f}s...")
+                time.sleep(wait)
+                continue
+
+            # 그 외는 그냥 에러로 보여주기
             raise RuntimeError(f"Unexpected Gemini response: {json.dumps(data, ensure_ascii=False)[:800]}")
+
+        raise RuntimeError("Gemini text generation failed after retries (429/MAX_TOKENS/no parts)")
 
     # -----------------------------
     # ✅ 실모드: Gemini 호출 (이미지 + 텍스트 → 캡션 JSON)
@@ -128,7 +167,7 @@ class AIProcessor:
                 {"inline_data": {"mime_type": mime, "data": b64}}
             )
 
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/{self.model}:generateContent"
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{self.vision_model}:generateContent"
         params = {"key": self.api_key}
         payload = {
             "contents": [{"role": "user", "parts": fixed_parts}],
@@ -233,24 +272,26 @@ class AIProcessor:
         return self._gemini_generate_text(final_prompt, temperature=0.7, max_tokens=1500).strip()
 
 def create_ai_processor(config: Dict[str, Any]) -> AIProcessor:
-        ai_cfg = config.get("ai", {})
-        provider = ai_cfg.get("provider", "gemini")
-        model = ai_cfg.get("model", "gemini-2.0-flash")
-        mock_mode = bool(ai_cfg.get("mock_mode", False))
+    ai_cfg = config.get("ai", {})
+    provider = ai_cfg.get("provider", "gemini")
+    vision_model = ai_cfg.get("vision_model", "gemini-2.0-flash")
+    text_model = ai_cfg.get("text_model", "gemini-2.5-pro")
+    mock_mode = bool(ai_cfg.get("mock_mode", False))
 
-        base_dir = Path(__file__).resolve().parent.parent
-        prompts_dir = base_dir / "prompts"
+    base_dir = Path(__file__).resolve().parent.parent
+    prompts_dir = base_dir / "prompts"
 
-        api_key = None
-        if not mock_mode:
-            api_key = os.getenv("GEMINI_API_KEY") or os.getenv("AI_API_KEY")
-            if not api_key:
-                raise ValueError("Missing API key: set GEMINI_API_KEY (or set ai.mock_mode=true)")
+    api_key = None
+    if not mock_mode:
+        api_key = os.getenv("GEMINI_API_KEY") or os.getenv("AI_API_KEY")
+        if not api_key:
+            raise ValueError("Missing API key: set GEMINI_API_KEY (or set ai.mock_mode=true)")
 
-        return AIProcessor(
-            provider=provider,
-            model=model,
-            api_key=api_key,
-            prompts_dir=prompts_dir,
-            mock_mode=mock_mode,
-        )
+    return AIProcessor(
+        provider=provider,
+        vision_model=vision_model,
+        text_model=text_model,
+        api_key=api_key,
+        prompts_dir=prompts_dir,
+        mock_mode=mock_mode,
+    )
