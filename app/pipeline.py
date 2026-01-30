@@ -6,7 +6,7 @@ from pathlib import Path  # 추가됨
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Dict, List, Optional
-from PIL import Image
+from PIL import Image, ImageOps
 
 from app.config_loader import load_config
 from app.state_client import create_state_client, _build_drive_service
@@ -92,6 +92,9 @@ class Pipeline:
 
             try:
                 with Image.open(path) as im:
+                    # EXIF 회전 적용
+                    im = ImageOps.exif_transpose(im)
+                    
                     # 원본 크기 확인
                     orig_width, orig_height = im.size
                     if orig_width <= max_width and orig_height <= max_height:

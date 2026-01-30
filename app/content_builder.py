@@ -79,6 +79,11 @@ class ContentBuilder:
         items = captions_json.get("images", []) if isinstance(captions_json, dict) else []
 
         lines: List[str] = []
+        # 첫 번째 사진 위에 블로그 스타일 헤더 추가
+        if image_web_paths:
+            lines.append("🧡 파주에서 발견한 맛집")
+            lines.append("")
+        
         for i, url in enumerate(image_web_paths, start=1):
             alt = f"사진 {i}"
             caption_text = ""
