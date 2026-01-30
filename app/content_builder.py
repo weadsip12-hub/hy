@@ -81,25 +81,17 @@ class ContentBuilder:
         lines: List[str] = []
         # 첫 번째 사진 위에 블로그 스타일 헤더 추가
         if image_web_paths:
-            lines.append("🧡 파주에서 발견한 맛집")
+            lines.append("🧡 운정에서 발견한 팥빙수 맛집")
             lines.append("")
         
         for i, url in enumerate(image_web_paths, start=1):
             alt = f"사진 {i}"
-            caption_text = ""
             if i - 1 < len(items) and isinstance(items[i - 1], dict):
-                line1 = (items[i - 1].get("line1") or "").strip()
-                line2 = (items[i - 1].get("line2") or "").strip()
-                if line1:
-                    alt = line1
-                    caption_text = line1
-                    if line2:
-                        caption_text += f" {line2}"
+                summary = (items[i - 1].get("summary") or "").strip()
+                if summary:
+                    alt = summary
 
             lines.append(f"![{alt}]({url})")
-            if caption_text:
-                lines.append("")
-                lines.append(caption_text)
             lines.append("")
 
         return "\n".join(lines).strip()
@@ -107,6 +99,11 @@ class ContentBuilder:
     def _make_markdown(self, title: str, post_text: str, image_web_paths: List[str], captions_json: Dict[str, Any]) -> str:
         body = self._strip_front_matter(post_text or "")
         body = self._inject_images(body, image_web_paths)
+
+        # 사진 alt에 캡션 추가
+        img_block = self._render_image_block(image_web_paths, captions_json)
+        if img_block:
+            body = img_block + "\n\n---\n\n" + body.strip()
 
         md = []
         md.append("---")

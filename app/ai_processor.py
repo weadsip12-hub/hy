@@ -76,8 +76,8 @@ class AIProcessor:
         payload = {
             "contents": [{"role": "user", "parts": [{"text": prompt}]}],
             "generationConfig": {
-                "temperature": 0.3,
-                "maxOutputTokens": 600,
+                "temperature": 0.1,
+                "maxOutputTokens": 1200,
             },
         }
 
@@ -172,7 +172,7 @@ class AIProcessor:
         payload = {
             "contents": [{"role": "user", "parts": fixed_parts}],
             "generationConfig": {
-                "temperature": 0.3,
+                "temperature": 0.1,
                 "maxOutputTokens": 2000,
             },
         }
