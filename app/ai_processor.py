@@ -173,7 +173,7 @@ class AIProcessor:
             "contents": [{"role": "user", "parts": fixed_parts}],
             "generationConfig": {
                 "temperature": 0.3,
-                "maxOutputTokens": 900,
+                "maxOutputTokens": 1500,
             },
         }
 

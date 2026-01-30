@@ -6,6 +6,7 @@ from pathlib import Path  # 추가됨
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Dict, List, Optional
+from PIL import Image
 
 from app.config_loader import load_config
 from app.state_client import create_state_client, _build_drive_service
@@ -66,10 +67,47 @@ class Pipeline:
             return []
 
         self._log("INFO", f"Found {len(new_images)} new image(s). Downloading...")
-        downloaded = self.drive_manager.download_images(new_images, subdir="incoming")
+        try:
+            downloaded = self.drive_manager.download_images(new_images, subdir="incoming")
+            for img in downloaded:
+                self._log("INFO", f"Downloaded: {img.name} -> {img.local_path}")
+            return downloaded
+        except Exception as e:
+            self._log("ERROR", f"Failed to download images: {e}")
+            raise
+
+    def _resize_images(self, downloaded: List[DriveImage]) -> None:
+        """다운로드된 이미지를 리사이즈하여 크기를 줄임"""
+        resize_cfg = self.config.get("image_resize", {})
+        max_width = resize_cfg.get("max_width", 1024)
+        max_height = resize_cfg.get("max_height", 1024)
+        quality = resize_cfg.get("quality", 85)
+
         for img in downloaded:
-            self._log("INFO", f"Downloaded: {img.name} -> {img.local_path}")
-        return downloaded
+            if not img.local_path:
+                continue
+            path = Path(img.local_path)
+            if not path.exists():
+                continue
+
+            try:
+                with Image.open(path) as im:
+                    # 원본 크기 확인
+                    orig_width, orig_height = im.size
+                    if orig_width <= max_width and orig_height <= max_height:
+                        self._log("INFO", f"Image {img.name} already small enough, skipping resize")
+                        continue
+
+                    # 리사이즈
+                    im.thumbnail((max_width, max_height), Image.Resampling.LANCZOS)
+                    # 저장 (JPEG 품질 설정)
+                    if path.suffix.lower() in ('.jpg', '.jpeg'):
+                        im.save(path, quality=quality)
+                    else:
+                        im.save(path)
+                    self._log("INFO", f"Resized {img.name}: {orig_width}x{orig_height} -> {im.size}")
+            except Exception as e:
+                self._log("ERROR", f"Failed to resize {img.name}: {e}")
 
     def _ai_generate(self, downloaded: List[DriveImage]) -> tuple[Dict[str, Any], str]:
         self._log("INFO", "Generating captions (1 call for up to 4 images)...")
@@ -194,9 +232,10 @@ class Pipeline:
             if not downloaded:
                 return PipelineResult(ok=True, message="No new images.", processed_count=0)
 
+            self._resize_images(downloaded)
+
             captions, post_text = self._ai_generate(downloaded)
             #time.sleep(5)
-            post_text = self.ai.rewrite_trendy_blog(post_text)
             build_result = self._build_content(captions, post_text, downloaded)
             
             # 메타데이터 업데이트 (제목 추출 로직 포함)

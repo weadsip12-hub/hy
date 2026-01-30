@@ -81,13 +81,20 @@ class ContentBuilder:
         lines: List[str] = []
         for i, url in enumerate(image_web_paths, start=1):
             alt = f"사진 {i}"
+            caption_text = ""
             if i - 1 < len(items) and isinstance(items[i - 1], dict):
-                alt_candidate = (items[i - 1].get("line1") or "").strip()
-                if alt_candidate:
-                    alt = alt_candidate
+                line1 = (items[i - 1].get("line1") or "").strip()
+                line2 = (items[i - 1].get("line2") or "").strip()
+                if line1:
+                    alt = line1
+                    caption_text = line1
+                    if line2:
+                        caption_text += f" {line2}"
 
-            # index.html에서 alt를 캡션처럼 뿌려주니까 alt에 캡션 넣으면 됨
             lines.append(f"![{alt}]({url})")
+            if caption_text:
+                lines.append("")
+                lines.append(caption_text)
             lines.append("")
 
         return "\n".join(lines).strip()

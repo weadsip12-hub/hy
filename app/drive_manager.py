@@ -77,7 +77,12 @@ class DriveManager:
         downloader = MediaIoBaseDownload(fh, request)
         done = False
         while not done:
-            _, done = downloader.next_chunk()
+            try:
+                status, done = downloader.next_chunk()
+                print(f"Downloading {file_id}: {int(status.progress() * 100)}%")
+            except Exception as e:
+                print(f"Download error for {file_id}: {e}")
+                raise
         return fh.getvalue()
 
     def download_images(self, images: List[DriveImage], subdir: str) -> List[DriveImage]:
@@ -86,6 +91,7 @@ class DriveManager:
 
         downloaded: List[DriveImage] = []
         for img in images:
+            print(f"Starting download for {img.name} (ID: {img.file_id})")
             safe_name = self._safe_filename(img.name)
             local_path = target_dir / safe_name
 
@@ -94,6 +100,7 @@ class DriveManager:
 
             img.local_path = str(local_path)
             downloaded.append(img)
+            print(f"Downloaded {img.name}")
 
         return downloaded
 

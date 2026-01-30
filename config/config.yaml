@@ -12,9 +12,14 @@ pipeline:
 
 ai:
   provider: "gemini"
-  vision_model: "gemini-2.0-flash"
-  text_model: "gemini-2.0-flash"
+  vision_model: "gemini-2.5-flash"
+  text_model: "gemini-2.5-flash-lite"
   mock_mode: false  # 실제 포스팅을 위해 false로 설정하세요
+
+image_resize:
+  max_width: 1024
+  max_height: 1024
+  quality: 85
 
 blog:
   baseurl: "/hy"
