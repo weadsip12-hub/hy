@@ -108,11 +108,6 @@ class ContentBuilder:
         body = self._strip_front_matter(post_text or "")
         body = self._inject_images(body, image_web_paths)
 
-        # ✅ 토큰이 없어도 이미지 블록을 무조건 맨 위에 붙임
-        img_block = self._render_image_block(image_web_paths, captions_json)
-        if img_block:
-            body = img_block + "\n\n---\n\n" + body.strip()
-
         md = []
         md.append("---")
         md.append(f'title: "{title}"')
