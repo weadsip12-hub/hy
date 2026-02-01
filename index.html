@@ -9,26 +9,44 @@
         .post { border: 1px solid #ddd; padding: 10px; margin: 10px 0; }
         .post h2 { margin: 0; }
         .post p { margin: 5px 0; }
+        #search { width: 100%; padding: 10px; margin-bottom: 20px; }
     </style>
 </head>
 <body>
     <h1>Hyun Blog</h1>
+    <input type="text" id="search" placeholder="글 검색...">
     <div id="posts"></div>
     <script>
+        let allPosts = [];
         fetch('posts.json')
             .then(response => response.json())
             .then(posts => {
-                const container = document.getElementById('posts');
-                posts.forEach(post => {
-                    const div = document.createElement('div');
-                    div.className = 'post';
+                allPosts = posts;
+                displayPosts(posts);
+            });
+
+        function displayPosts(posts) {
+            const container = document.getElementById('posts');
+            container.innerHTML = '';
+            posts.forEach(post => {
+                const div = document.createElement('div');
+                div.className = 'post';
                     div.innerHTML = `
-                        <h2><a href="${post.file}">${post.title}</a></h2>
+                        <h2><a href="blog/posts/${post.file}">${post.title}</a></h2>
                         <p>${post.date}</p>
                     `;
-                    container.appendChild(div);
-                });
+                container.appendChild(div);
             });
+        }
+
+        document.getElementById('search').addEventListener('input', function() {
+            const query = this.value.toLowerCase();
+            const filtered = allPosts.filter(post => 
+                post.title.toLowerCase().includes(query) || 
+                post.date.includes(query)
+            );
+            displayPosts(filtered);
+        });
     </script>
 </body>
 </html>
