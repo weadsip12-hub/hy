@@ -1,6 +1,7 @@
 from __future__ import annotations
 import subprocess
 import traceback
+import json
 from pathlib import Path
 from dataclasses import dataclass
 from datetime import datetime
@@ -130,6 +131,32 @@ class Pipeline:
         self._log("INFO", f"Post created: {result.post_path}")
         return result
 
+    def _update_posts_metadata(self, build_result: BuildResult, title: str) -> None:
+        """블로그 목록(index.html)이 사용하는 posts.json 업데이트"""
+        self._log("INFO", "Updating posts.json manifest...")
+        json_path = self.git.repo_dir / "posts.json"
+        
+        if json_path.exists():
+            try:
+                posts = json.loads(json_path.read_text(encoding="utf-8"))
+            except:
+                posts = []
+        else:
+            posts = []
+
+        new_entry = {
+            "title": title,
+            "file": Path(build_result.post_path).name,
+            "date": datetime.now().strftime("%Y-%m-%d"),
+            "tags": ["blog"]
+        }
+
+        if not any(p.get("file") == new_entry["file"] for p in posts):
+            posts.insert(0, new_entry)
+
+        json_path.write_text(json.dumps(posts, ensure_ascii=False, indent=2), encoding="utf-8")
+        self._log("INFO", "posts.json updated.")
+
     def _git_publish(self, build_result: BuildResult) -> None:
         git_cfg = self.config.get("git", {})
         template = git_cfg.get("commit_message_template", "chore: publish {slug}")
@@ -171,6 +198,10 @@ class Pipeline:
             captions, post_text = self._ai_generate(downloaded)
             build_result = self._build_content(captions, post_text, downloaded)
             
+            # 메타데이터 업데이트 (제목 추출 로직 포함)
+            title = post_text.splitlines()[0].strip("# ")
+            self._update_posts_metadata(build_result, title)
+
             # Git 배포
             self._git_publish(build_result)
 

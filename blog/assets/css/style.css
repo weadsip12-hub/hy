@@ -1,0 +1,192 @@
+/* Reset and base styles */
+* {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Noto Sans KR', sans-serif;
+  line-height: 1.6;
+  color: #333;
+  background-color: #f8f9fa;
+  margin: 0;
+  padding: 0;
+}
+
+/* Header */
+.site-header {
+  background-color: #fff;
+  border-bottom: 1px solid #e9ecef;
+  padding: 1rem 0;
+}
+
+.wrapper {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 1rem;
+}
+
+.site-title {
+  font-size: 1.5rem;
+  font-weight: bold;
+  color: #007bff;
+  text-decoration: none;
+}
+
+.site-nav {
+  float: right;
+}
+
+.menu-icon {
+  display: none;
+}
+
+.trigger {
+  display: inline;
+}
+
+.page-link {
+  margin-left: 1rem;
+  color: #666;
+  text-decoration: none;
+}
+
+.page-link:hover {
+  color: #007bff;
+}
+
+/* Main content */
+.page-content {
+  padding: 2rem 0;
+}
+
+.post-header {
+  margin-bottom: 2rem;
+  border-bottom: 1px solid #e9ecef;
+  padding-bottom: 1rem;
+}
+
+.post-title {
+  font-size: 2rem;
+  margin-bottom: 0.5rem;
+  color: #212529;
+}
+
+.post-meta {
+  display: flex;
+  gap: 1rem;
+  font-size: 0.9rem;
+  color: #6c757d;
+}
+
+.post-meta .author::before {
+  content: "by ";
+}
+
+.post-meta .date::before {
+  content: "📅 ";
+}
+
+.post-meta .category::before {
+  content: "📂 ";
+}
+
+.post-content {
+  line-height: 1.8;
+  margin-bottom: 2rem;
+}
+
+.post-content h2, .post-content h3, .post-content h4 {
+  margin-top: 2rem;
+  color: #495057;
+}
+
+.post-content p {
+  margin-bottom: 1rem;
+}
+
+.post-content img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 4px;
+  margin: 1rem 0;
+}
+
+.post-tags {
+  margin-bottom: 1rem;
+  font-size: 0.9rem;
+}
+
+.tag {
+  display: inline-block;
+  background-color: #e9ecef;
+  color: #495057;
+  padding: 0.25rem 0.5rem;
+  margin-right: 0.5rem;
+  margin-bottom: 0.5rem;
+  border-radius: 4px;
+  text-decoration: none;
+}
+
+.tag:hover {
+  background-color: #007bff;
+  color: #fff;
+}
+
+.post-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 2rem;
+}
+
+.like-btn, .share-btn, .bookmark-btn {
+  background-color: #f8f9fa;
+  border: 1px solid #dee2e6;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.like-btn:hover, .share-btn:hover, .bookmark-btn:hover {
+  background-color: #e9ecef;
+}
+
+.comments-section {
+  border-top: 1px solid #e9ecef;
+  padding-top: 1rem;
+}
+
+.comments-section h3 {
+  margin-bottom: 1rem;
+  color: #495057;
+}
+
+/* Footer */
+.site-footer {
+  background-color: #343a40;
+  color: #adb5bd;
+  text-align: center;
+  padding: 1rem 0;
+  margin-top: 2rem;
+}
+
+.site-footer p {
+  margin: 0;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .site-nav {
+    float: none;
+    margin-top: 1rem;
+  }
+
+  .trigger {
+    display: block;
+  }
+
+  .page-link {
+    display: block;
+    margin: 0.5rem 0;
+  }
+}
